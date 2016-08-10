@@ -1,0 +1,5 @@
+*.pyc
+.idea/
+*.pid
+__pycache__/
+migrations/

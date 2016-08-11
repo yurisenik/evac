@@ -48,7 +48,8 @@ class Item(models.Model):
     to_index = models.NullBooleanField(null=True)
     sort = models.IntegerField(null=True)
     date = models.DateTimeField(null=True)
-    createdate = models.DateTimeField(auto_now_add=True)
+    create_date = models.DateTimeField(auto_now_add=True)
+    last_seen_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return '{0} ({1})'.format(self.mark.title, self.number)

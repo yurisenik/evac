@@ -40,8 +40,8 @@ def sync_to_database(data):
         try:
             item_instance = Item.objects.get(id_ext=item['id'])
             print('Already in db with pk={0}'.format(item_instance.pk))
-            item_instance.date = datetime.strptime(item['date'],'%d.%m.%Y %H:%M')
-            item_instance.save()
+#            item_instance.date = datetime.strptime(item['date'],'%d.%m.%Y %H:%M')
+#            item_instance.save()
         except Item.DoesNotExist:
             item_instance = Item(id_ext=item['id'], from_place=item['fromplace'], evacuator=evacuator_instance,
                                  mark=mark_instance, number=item['number'], organization=organization_instance,

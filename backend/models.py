@@ -1,4 +1,6 @@
 from django.contrib.gis.db import models
+from django.dispatch import receiver
+from django.db.models.signals import pre_save
 
 
 class Parking(models.Model):
@@ -53,3 +55,28 @@ class Item(models.Model):
 
     def __str__(self):
         return '{0} ({1})'.format(self.mark.title, self.number)
+
+
+@receiver(pre_save, sender=Item)
+def item_pre_save_handler(sender, instance, **kwargs):
+    import requests
+
+    if instance.from_place and (not instance.geom):
+        payload = {
+            'll': '38.970488999999965,45.026769074573004',
+            'spn': '5,5',
+            'rspn': '0',
+            'lang': 'ru_RU',
+            'format': 'json',
+            'geocode': instance.from_place
+        }
+
+        r = requests.get('https://geocode-maps.yandex.ru/1.x/', params=payload, verify=False)
+
+        data = r.json()
+        print(data)
+
+        if int(data['response']['GeoObjectCollection']['metaDataProperty']['GeocoderResponseMetaData']['found']) > 0:
+            feature_member = data['response']['GeoObjectCollection']['featureMember'][0]
+            instance.geom = 'POINT({lng_lat})'.format(lng_lat=feature_member['GeoObject']['Point']['pos'])
+

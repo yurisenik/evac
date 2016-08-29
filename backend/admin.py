@@ -8,4 +8,10 @@ admin.site.register(Organization, OSMGeoAdmin)
 admin.site.register(Parking, OSMGeoAdmin)
 admin.site.register(Evacuator, OSMGeoAdmin)
 admin.site.register(Mark, OSMGeoAdmin)
-admin.site.register(Item, OSMGeoAdmin)
+
+
+class ItemAdmin(OSMGeoAdmin):
+    readonly_fields = ('create_date', 'last_seen_date')
+
+
+admin.site.register(Item, ItemAdmin)

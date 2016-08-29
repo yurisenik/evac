@@ -40,13 +40,14 @@ def sync_to_database(data):
         try:
             item_instance = Item.objects.get(id_ext=item['id'])
             print('Already in db with pk={0}'.format(item_instance.pk))
-#            item_instance.date = datetime.strptime(item['date'],'%d.%m.%Y %H:%M')
-#            item_instance.save()
+        #            item_instance.date = datetime.strptime(item['date'],'%d.%m.%Y %H:%M')
+        #            item_instance.save()
+            item_instance.save()
         except Item.DoesNotExist:
             item_instance = Item(id_ext=item['id'], from_place=item['fromplace'], evacuator=evacuator_instance,
                                  mark=mark_instance, number=item['number'], organization=organization_instance,
                                  parking=parking_instance, active=item['active'], to_index=item['toindex'],
-                                 sort=item['sort'], date=datetime.strptime(item['date'],'%d.%m.%Y %H:%M'))
+                                 sort=item['sort'], date=datetime.strptime(item['date'], '%d.%m.%Y %H:%M'))
             item_instance.save()
             print('Added item to db with pk={0}'.format(item_instance.pk))
 
@@ -63,10 +64,10 @@ def fetch_data():
     print('Processing first page...')
     sync_to_database(data)
     pages_count = data['page_count']
-#    items_count = data['items_count']
+    #    items_count = data['items_count']
     print('Total pages: {0}'.format(pages_count))
 
-    for page in range(2, pages_count+1):
+    for page in range(2, pages_count + 1):
         print('Processing page: {0}'.format(page))
         r = requests.get(url + str(page))
         data = r.json()

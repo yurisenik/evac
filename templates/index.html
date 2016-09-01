@@ -1,0 +1,247 @@
+{% load staticfiles %}
+{% load compress %}
+
+<!DOCTYPE html>
+<html ng-app="evac">
+<head>
+
+    <title>Эвакуация в Краснодаре</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    {% compress js %}
+    <script src="{% static 'bower_components/angular/angular.min.js' %}"></script>
+    <script src="{% static 'bower_components/leaflet/dist/leaflet.js' %}"></script>
+    <script src="{% static 'bower_components/bootstrap/dist/js/bootstrap.min.js' %}"></script>
+    {% endcompress %}
+    {% compress css %}
+    <link rel="stylesheet" href="{% static 'bower_components/leaflet/dist/leaflet.css' %}"/>
+    <link rel="stylesheet" href="{% static 'bower_components/font-awesome/css/font-awesome.min.css' %}"/>
+    <link rel="stylesheet" href="{% static 'bower_components/bootstrap/dist/css/bootstrap.min.css' %}"/>
+        <style>
+
+        </style>
+    {% endcompress %}
+
+    <link href="{% static 'favicon.ico' %} " rel="shortcut icon" type="image/x-icon"/>
+
+    <script>
+        var app = angular.module("evac", ["leaflet-directive", "nemLogging"]);
+        app.controller('IndexController', ['$scope', '$http', function ($scope, $http) {
+
+            angular.extend($scope, {
+                detailZoomLevel: 11,
+                unpRawData: {},
+                center: {
+                    lat: 45,
+                    lng: 41,
+                    zoom: 7
+                },
+                markers: {},
+                controls: {
+//                    easyButton: {
+//                        icon: 'fa-binoculars',
+//                        title: 'Выберите район',
+//                        onClick: function(){
+//                            $('#locationChangeModal').modal();
+//                       }
+//                    }
+                },
+                layers: {
+                        baselayers: {
+                            osm: {
+                                name: "OpenStreetMap (XYZ)",
+                                type: "xyz",
+                                url: 'https://a.tiles.mapbox.com/v4/ws-perelyainen.lmbjo2b2/{z}/{x}/{y}.png?access_token=sk.eyJ1IjoiYWhtYXlvdSIsImEiOiJVWDFvQkFFIn0.NrRBJdoyt62hjQllNtAF3A',
+                                layerOptions: {
+                                    subdomains: ['a', 'b', 'c'],
+                                    attribution: '<a href="/contacts.html">Связь с администрацией сайта</a>',
+                                    continuousWorld: false,
+                                }
+                            }
+                        },
+                        overlays: {
+                            {% for mapLocation in mapLocations %}
+                            '{{ mapLocation.name }}' : {
+                                name: '{{ mapLocation.name }}',
+                                type: 'markercluster',
+                                visible: true,
+                                layerOptions: {
+                                    showCoverageOnHover: true,
+                                    maxClusterRadius: 20,
+                                    //singleMarkerMode: true,
+                                    iconCreateFunction: function (cluster) {
+                                        var childCount = cluster.getChildCount();
+
+                                        return new L.AwesomeMarkers.icon({
+                                            icon: '',
+                                            prefix: 'fa',
+                                            markerColor: 'red',
+                                            html: childCount
+                                        });
+                                    }
+
+                                }
+                            },
+                            {% endfor %}
+
+                        }
+                },
+
+                locations: {
+                    {% for mapLocation in mapLocations|dictsort:"sortOrder" %}
+                        {{ mapLocation.pk }} : {
+                                name : "{{ mapLocation.name }}",
+                                lat: {{ mapLocation.lat|stringformat:"f"}},
+                                lng: {{ mapLocation.lng|stringformat:"f" }},
+                                zoom: {{ mapLocation.zoom }}
+                        },
+                    {% endfor %}
+                },
+                changeLocation: changeLocation,
+
+
+                panelClick: panelClick,
+                openDetails: openDetails,
+                openDetailsById: openDetailsById,
+                locationChangeOKClicked: locationChangeOKClicked,
+                locationChangeModalOpen: locationChangeModalOpen
+        });
+
+        function locationChangeModalOpen(){
+            $('#locationChangeModal').modal();
+        }
+
+        function panelClick(pk){
+            //$scope.markers[pk].focus = true;
+            $scope.center.lat = $scope.markers[pk].lat;
+            $scope.center.lng = $scope.markers[pk].lng;
+            $scope.center.zoom = 18;
+            //updateUnpData();
+        }
+
+        function changeLocation(id) {
+            $scope.center.lat = $scope.locations[id].lat;
+            $scope.center.lng = $scope.locations[id].lng;
+            $scope.center.zoom = $scope.locations[id].zoom;
+        }
+
+        function locationChangeOKClicked(){
+            $('#locationChangeModal').modal('hide');
+            changeLocation($('[name=locationSelect]').val());
+        }
+
+        function openDetails(name){
+            var unps = $.grep($scope.unpRawData, function(e){
+               return e.name == name;
+            });
+            window.open('/unp/'+unps[0].slug+'/','_blank');
+        }
+
+        function openDetailsById(id){
+            var unps = $.grep($scope.unpRawData, function(e){
+                return e.pk == id;
+            });
+            window.open('/unp/'+unps[0].slug+'/', '_blank');
+        }
+
+        $scope.$on('leafletDirectiveLabel.click', handleLabelClick);
+        function handleLabelClick(event, args) {
+            openDetails(args.leafletObject._content);
+        }
+
+        $scope.$on('leafletDirectiveMarker.click', handleMarkerClick);
+        function handleMarkerClick(event, args) {
+            //var result = $.grep($scope.unpRawData, function(e){
+            //       return e.pk == parseInt(args.modelName);
+            //});
+            //openDetails(result[0].name);
+            //console.log(args);
+            openDetailsById(args.modelName);
+        }
+
+        function updateUnpData(){
+            $http
+                    .get('/api/unpapi/?sw_lng=' + $scope.bounds.southWest.lng + '&sw_lat=' + $scope.bounds.southWest.lat + '&ne_lng=' + $scope.bounds.northEast.lng + '&ne_lat=' + $scope.bounds.northEast.lat)
+                        .then(function (response) {
+                            $scope.unpRawData=response.data.results;
+                            $scope.markers={};
+
+                            var markers = response.data.results.reduce(function (obj, current) {
+                                $scope.markers[current.pk] = {
+                                                    layer: current.locationString,
+                                                    lat: current.lat,
+                                                    lng: current.lng,
+                                                    focus: false,
+                                                    //message: current.locationString,
+                                                    draggable: false,
+                                                    icon: {
+                                                        iconUrl: '{% static "bower_components/Leaflet.awesome-markers/dist/images/markers-soft-1.png" %}',
+                                                        iconRetinaUrl: '{% static "bower_components/Leaflet.awesome-markers/dist/images/markers-soft@2x-1.png" %}',
+                                                        iconSize: [36, 46],
+                                                        iconAnchor: [13, 35],
+                                                        //shadowUrl: '{% static "bower_components/Leaflet.awesome-markers/dist/images/markers-shadow.png" %}',
+                                                        //shadowSize: [50, 64],
+                                                        //shadowAnchor: [0, 10],
+                                                        //popupAnchor: [50,50]
+
+                                                    }
+
+                                                    };
+                                //if ($scope.center.zoom > $scope.detailZoomLevel){
+                                     $scope.markers[current.pk].label = {
+                                                            message: current.name,
+                                                            options: {
+                                                                        noHide: true,
+                                                                        offset: [26, -30],
+                                                                        clickable: true
+                                                                    }
+                                                            }
+
+                                //}
+                            }, {});
+                        })
+
+        }
+
+        $scope.$watch(function () {
+                return $scope.center.zoom;
+            }, function(newVal, oldVal){
+                var radius = 200;
+                if(newVal > 12) {
+                    radius = 10;
+                }
+
+                angular.forEach($scope.layers.overlays, function (val, key) {
+                    $scope.layers.overlays[key].layerOptions.maxClusterRadius = radius;
+                });
+
+            });
+
+        $scope.$watch(function () {
+                return $scope.bounds;
+            }, function (newVal, oldVal) {
+                if (typeof($scope.bounds) != "undefined") {
+
+                updateUnpData();
+
+                }
+            });
+
+        if(typeof(QueryString.loc) != "undefined") {
+            $scope.changeLocation(QueryString.loc);
+        }
+
+
+
+        }]);
+    </script>
+</head>
+<body ng-controller="IndexController">
+
+
+<leaflet controls="controls" class="mainMap" center="center" markers="markers" bounds="bounds" layers="layers"></leaflet>
+
+
+</body>
+</html>
+

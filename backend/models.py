@@ -74,7 +74,6 @@ def item_pre_save_handler(sender, instance, **kwargs):
         r = requests.get('https://geocode-maps.yandex.ru/1.x/', params=payload, verify=False)
 
         data = r.json()
-        print(data)
 
         if int(data['response']['GeoObjectCollection']['metaDataProperty']['GeocoderResponseMetaData']['found']) > 0:
             feature_member = data['response']['GeoObjectCollection']['featureMember'][0]

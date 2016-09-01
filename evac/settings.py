@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'backend',
     'djcelery',
+    'compressor',
 ]
 
 MIDDLEWARE_CLASSES = [
